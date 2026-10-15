@@ -2,6 +2,9 @@
 
 API REST para cadastro de cartões, consulta de saldo e autorização de transações. O projeto usa Spring Boot, Java 25, Spring Data JPA e MySQL, organizado em camadas inspiradas em arquitetura hexagonal.
 
+## 🛠 Ferramentas & Produtividade
+O desenvolvimento deste projeto contou com o apoio de ferramentas de Inteligência Artificial Generativa (GitHub Copilot / LLMs) atuando como assistente de produtividade para geração de código boilerplate e auxílio na construção de cenários de testes automatizados, mantendo o controle total da arquitetura, regras de negócio e decisões de design sob responsabilidade técnica do desenvolvedor.
+
 ## 🏛 Decisões de Arquitetura & Escolha do Banco de Dados
 
 Para este projeto, optou-se pela utilização do **MySQL** (banco de dados relacional) em detrimento de uma solução NoSQL como o MongoDB. As razões técnicas que motivaram essa escolha incluem:
