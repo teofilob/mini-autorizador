@@ -43,20 +43,22 @@ Utilização de restrições de unicidade (`UNIQUE constraint`) no campo `numero
 
 ## Executar localmente
 
-O arquivo `docker-compose.yml` inicia um MySQL na porta `3306` e cria o banco `miniautorizador`:
+Para iniciar apenas o MySQL na porta `3306` e executar a aplicação no host:
 
 ```bash
 docker compose up -d mysql
 ```
 
-Configure a conexão da aplicação usando variáveis de ambiente. O exemplo abaixo corresponde às configurações do serviço MySQL definido no Compose; altere os valores para seu ambiente:
+Configure a conexão da aplicação usando variáveis de ambiente. O exemplo abaixo usa a senha padrão definida no Compose; substitua-a em ambientes compartilhados:
 
 ```bash
 export DB_HOST=localhost
 export DB_PORT=3306
 export DB_NAME=miniautorizador
 export DB_USERNAME=root
-export DB_PASSWORD="<senha-configurada-no-MySQL>"
+export DB_PASSWORD=your_secure_password
+export APP_SECURITY_USERNAME=username
+export APP_SECURITY_PASSWORD=password
 ```
 
 No PowerShell, configure-as para a sessão atual assim:
@@ -66,7 +68,9 @@ $env:DB_HOST = "localhost"
 $env:DB_PORT = "3306"
 $env:DB_NAME = "miniautorizador"
 $env:DB_USERNAME = "root"
-$env:DB_PASSWORD = "<senha-configurada-no-MySQL>"
+$env:DB_PASSWORD = "your_secure_password"
+$env:APP_SECURITY_USERNAME = "username"
+$env:APP_SECURITY_PASSWORD = "password"
 ```
 
 Inicie a aplicação:
@@ -84,16 +88,31 @@ java -jar target/mini-autorizador-1.0.0.jar
 
 O Hibernate está configurado com `ddl-auto=update` e atualiza o esquema ao iniciar. O perfil de testes usa H2 em memória e não requer uma instância MySQL.
 
+### Executar a aplicação com Docker Compose
+
+O Compose constrói a imagem da aplicação, inicia o MySQL e aguarda o banco ficar saudável antes de iniciar a API:
+
+```bash
+docker compose up --build -d
+```
+
+Por padrão, a API fica em `http://localhost:8080`. Para trocar as credenciais HTTP Basic e a senha do banco, configure `APP_SECURITY_USERNAME`, `APP_SECURITY_PASSWORD` e `DB_PASSWORD` no ambiente antes de executar `docker compose up`. Para parar os serviços:
+
+```bash
+docker compose down
+```
+
 ## Endpoints
 
 ### Cadastrar cartão
 
 `POST /cartoes`
 
-O número deve conter 16 dígitos e a senha do cartão, 4 dígitos. Um cartão novo recebe saldo inicial de `1100.00`.
+Todos os endpoints em `/cartoes` e `/transacoes` exigem HTTP Basic. O número deve conter 16 dígitos e a senha do cartão, 4 dígitos. Um cartão novo recebe saldo inicial de `500.00`.
 
 ```bash
 curl -i -X POST http://localhost:8080/cartoes \
+  -u "username:password" \
   -H "Content-Type: application/json" \
   -d '{"numeroCartao":"6549873025634501","senha":"1234"}'
 ```
@@ -113,7 +132,7 @@ Se o cartão já existir, a resposta é `422 Unprocessable Entity` com o mesmo f
 
 `GET /cartoes/{numeroCartao}`
 
-Este endpoint exige autenticação HTTP Basic, configurada pelas variáveis `APP_SECURITY_USERNAME` e `APP_SECURITY_PASSWORD`.
+Este endpoint exige autenticação HTTP Basic, configurada pelas variáveis `APP_SECURITY_USERNAME` e `APP_SECURITY_PASSWORD` (padrões: `username` e `password`).
 
 ```bash
 curl -i -u "<usuario>:<senha-configurados-no-ambiente>" \
@@ -130,6 +149,7 @@ curl -i -u "<usuario>:<senha-configurados-no-ambiente>" \
 
 ```bash
 curl -i -X POST http://localhost:8080/transacoes \
+  -u "username:password" \
   -H "Content-Type: application/json" \
   -d '{"numeroCartao":"6549873025634501","senhaCartao":"1234","valor":4.85}'
 ```
@@ -138,17 +158,19 @@ curl -i -X POST http://localhost:8080/transacoes \
 - `422 Unprocessable Entity`, corpo texto `CARTAO_INEXISTENTE`, `SENHA_INVALIDA` ou `SALDO_INSUFICIENTE`: transação recusada.
 - `400 Bad Request`: corpo inválido ou campos fora das validações.
 - `503 Service Unavailable`, corpo texto `TRANSACAO_TEMPORARIAMENTE_INDISPONIVEL`: lock pessimista indisponível.
+- `401 Unauthorized`: credenciais HTTP Basic ausentes ou inválidas.
 
 ## Concorrência e persistência
 
-A autorização é processada dentro de uma transação (`@Transactional`). O repositório busca o cartão com `PESSIMISTIC_WRITE`, que Hibernate traduz para o lock de escrita apropriado ao banco (como `FOR UPDATE` no MySQL). A senha e o saldo são validados após a aquisição do lock; o débito e a gravação do histórico da transação pertencem à mesma transação. O lock é mantido até commit ou rollback, serializando autorizações concorrentes para o mesmo cartão e evitando double spending.
+A autorização é processada dentro de uma transação (`@Transactional`). O repositório busca o cartão com `PESSIMISTIC_WRITE`, que Hibernate traduz para o lock de escrita apropriado ao banco (como `FOR UPDATE` no MySQL). A senha e o saldo são validados após a aquisição do lock; a atualização do saldo pertence à mesma transação. O lock é mantido até commit ou rollback, serializando autorizações concorrentes para o mesmo cartão e evitando double spending. Conforme o escopo do desafio, o histórico das transações não é persistido.
 
 ## Segurança
 
-- A consulta de saldo usa HTTP Basic. Configure `APP_SECURITY_USERNAME` e `APP_SECURITY_PASSWORD` no ambiente; não use credenciais de desenvolvimento em produção.
-- A criação de cartões e o endpoint de transações são públicos na configuração atual.
+- Todos os endpoints de `/cartoes` e `/transacoes` usam HTTP Basic. Configure `APP_SECURITY_USERNAME` e `APP_SECURITY_PASSWORD` no ambiente e não use as credenciais padrão em produção.
 - Não registre senhas nem números completos de cartão. O `toString()` do comando de transação oculta a senha e mascara o número do cartão.
 - O endpoint de criação devolve os dados enviados, incluindo a senha do cartão, conforme o contrato da API. Proteja esse endpoint com controles adequados antes de expô-lo em ambientes não confiáveis.
+
+O desafio opcional de eliminar condicionais com Strategy/Chain of Responsibility não foi implementado; a autorização mantém validações explícitas em sequência para deixar clara a precedência das regras.
 
 ## Observabilidade
 
@@ -182,5 +204,5 @@ O relatório HTML é gerado em `target/site/jacoco/index.html`.
 - `domain`: modelos, regras e exceções de negócio.
 - `application`: casos de uso, comandos, resultados e portas.
 - `infrastructure/adapter/inbound`: endpoints REST, validação, tratamento de erros e filtro de correlação.
-- `infrastructure/adapter/outbound`: persistência JPA para cartões e transações.
+- `infrastructure/adapter/outbound`: persistência JPA para cartões.
 - `infrastructure/config`: configuração de segurança.

@@ -3,7 +3,6 @@ package br.com.teofilob.miniautorizador.infrastructure.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.User;
@@ -21,7 +20,7 @@ public class SecurityConfig {
         return http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(HttpMethod.GET, "/cartoes/*").authenticated()
+                        .requestMatchers("/cartoes/**", "/transacoes/**").authenticated()
                         .anyRequest().permitAll())
                 .httpBasic(Customizer.withDefaults())
                 .build();
@@ -30,7 +29,7 @@ public class SecurityConfig {
     @Bean
     public UserDetailsService userDetailsService(
             @Value("${app.security.username:username}") String username,
-            @Value("${app.security.password:passwordpassword}") String password,
+            @Value("${app.security.password:password}") String password,
             PasswordEncoder passwordEncoder) {
         return new InMemoryUserDetailsManager(
                 User.withUsername(username)

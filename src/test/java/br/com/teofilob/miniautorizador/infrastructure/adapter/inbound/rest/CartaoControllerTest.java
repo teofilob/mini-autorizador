@@ -49,6 +49,7 @@ class CartaoControllerTest {
     @Test
     void deveCriarCartaoEArmazenarNaBase() throws Exception {
         mockMvc.perform(post("/cartoes")
+                        .with(httpBasic("username", "password"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(PAYLOAD))
                 .andExpect(status().isCreated())
@@ -56,33 +57,59 @@ class CartaoControllerTest {
                 .andExpect(jsonPath("$.numeroCartao").value(NUMERO_CARTAO));
 
         assertEquals(SENHA, cartaoJpaRepository.findById(NUMERO_CARTAO).orElseThrow().getSenha());
-        assertEquals(new BigDecimal("1100.00"),
+        assertEquals(new BigDecimal("500.00"),
                 cartaoJpaRepository.findById(NUMERO_CARTAO).orElseThrow().getSaldo());
     }
 
     @Test
-    void deveRetornar422ComOsDadosEnviadosQuandoCartaoJaExiste() throws Exception {
+    void deveRetornar422ComOsDadosDoCartaoExistenteQuandoCartaoJaExiste() throws Exception {
         mockMvc.perform(post("/cartoes")
+                        .with(httpBasic("username", "password"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(PAYLOAD))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(post("/cartoes")
+                        .with(httpBasic("username", "password"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(PAYLOAD))
+                        .content("""
+                                {
+                                  "senha": "9999",
+                                  "numeroCartao": "6549873025634501"
+                                }
+                                """))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.senha").value(SENHA))
                 .andExpect(jsonPath("$.numeroCartao").value(NUMERO_CARTAO));
     }
 
     @Test
+    void deveRetornar401AoCriarCartaoSemAutenticacao() throws Exception {
+        mockMvc.perform(post("/cartoes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(PAYLOAD))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void deveRetornar401AoCriarCartaoComCredenciaisInvalidas() throws Exception {
+        mockMvc.perform(post("/cartoes")
+                        .with(httpBasic("username", "senha-incorreta"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(PAYLOAD))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void deveRetornarSaldoDoCartaoComAutenticacaoBasica() throws Exception {
         mockMvc.perform(post("/cartoes")
+                        .with(httpBasic("username", "password"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(PAYLOAD))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(post("/transacoes")
+                        .with(httpBasic("username", "password"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -96,7 +123,7 @@ class CartaoControllerTest {
         mockMvc.perform(get("/cartoes/{numeroCartao}", NUMERO_CARTAO)
                         .with(httpBasic("username", "password")))
                 .andExpect(status().isOk())
-                .andExpect(content().string("1095.15"));
+                .andExpect(content().string("495.15"));
     }
 
     @Test

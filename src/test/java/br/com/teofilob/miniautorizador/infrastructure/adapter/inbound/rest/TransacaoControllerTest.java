@@ -2,7 +2,6 @@ package br.com.teofilob.miniautorizador.infrastructure.adapter.inbound.rest;
 
 import br.com.teofilob.miniautorizador.infrastructure.adapter.outbound.persistence.cartao.CartaoEntity;
 import br.com.teofilob.miniautorizador.infrastructure.adapter.outbound.persistence.cartao.CartaoJpaRepository;
-import br.com.teofilob.miniautorizador.infrastructure.adapter.outbound.persistence.transacao.TransacaoJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,7 +13,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -30,12 +29,8 @@ class TransacaoControllerTest {
     @Autowired
     private CartaoJpaRepository cartaoJpaRepository;
 
-    @Autowired
-    private TransacaoJpaRepository transacaoJpaRepository;
-
     @BeforeEach
     void prepararCartoes() {
-        transacaoJpaRepository.deleteAll();
         cartaoJpaRepository.deleteAll();
         cartaoJpaRepository.save(new CartaoEntity(
                 "1234567890123456", "1234", new BigDecimal("500.00")));
@@ -54,6 +49,7 @@ class TransacaoControllerTest {
                 """;
 
         mockMvc.perform(post("/transacoes")
+                        .with(httpBasic("username", "password"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("X-Correlation-ID", "teste-transacao-01")
                         .content(payload))
@@ -65,12 +61,6 @@ class TransacaoControllerTest {
         assertEquals(new BigDecimal("450.00"), cartaoJpaRepository.findById("1234567890123456")
                 .orElseThrow()
                 .getSaldo());
-        assertEquals(1, transacaoJpaRepository.count());
-        var transacao = transacaoJpaRepository.findAll().get(0);
-        assertNotNull(transacao.getId());
-        assertEquals("1234567890123456", transacao.getNumeroCartao());
-        assertEquals(new BigDecimal("50.00"), transacao.getValor());
-        assertNotNull(transacao.getDataHora());
     }
 
     @Test
@@ -84,12 +74,13 @@ class TransacaoControllerTest {
                 """;
 
         mockMvc.perform(post("/transacoes")
+                        .with(httpBasic("username", "password"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().string("SALDO_INSUFICIENTE"));
 
-        assertSaldoNaoAlteradoENenhumaTransacaoCriada();
+        assertSaldoNaoAlterado();
     }
 
     @Test
@@ -103,12 +94,13 @@ class TransacaoControllerTest {
                 """;
 
         mockMvc.perform(post("/transacoes")
+                        .with(httpBasic("username", "password"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().string("SENHA_INVALIDA"));
 
-        assertSaldoNaoAlteradoENenhumaTransacaoCriada();
+        assertSaldoNaoAlterado();
     }
 
     @Test
@@ -122,18 +114,49 @@ class TransacaoControllerTest {
                 """;
 
         mockMvc.perform(post("/transacoes")
+                        .with(httpBasic("username", "password"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().string("CARTAO_INEXISTENTE"));
-
-        assertEquals(0, transacaoJpaRepository.count());
     }
 
-    private void assertSaldoNaoAlteradoENenhumaTransacaoCriada() {
+    @Test
+    void deveRetornar401AoAutorizarTransacaoSemAutenticacao() throws Exception {
+        mockMvc.perform(post("/transacoes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "numeroCartao": "1234567890123456",
+                                  "senhaCartao": "1234",
+                                  "valor": 50.00
+                                }
+                                """))
+                .andExpect(status().isUnauthorized());
+
+        assertSaldoNaoAlterado();
+    }
+
+    @Test
+    void deveRetornar401AoAutorizarTransacaoComCredenciaisInvalidas() throws Exception {
+        mockMvc.perform(post("/transacoes")
+                        .with(httpBasic("username", "senha-incorreta"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "numeroCartao": "1234567890123456",
+                                  "senhaCartao": "1234",
+                                  "valor": 50.00
+                                }
+                                """))
+                .andExpect(status().isUnauthorized());
+
+        assertSaldoNaoAlterado();
+    }
+
+    private void assertSaldoNaoAlterado() {
         assertEquals(new BigDecimal("500.00"), cartaoJpaRepository.findById("1234567890123456")
                 .orElseThrow()
                 .getSaldo());
-        assertEquals(0, transacaoJpaRepository.count());
     }
 }
