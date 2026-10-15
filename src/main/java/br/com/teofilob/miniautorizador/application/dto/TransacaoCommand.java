@@ -22,4 +22,13 @@ public record TransacaoCommand(String numeroCartao, String senha, BigDecimal val
             throw new IllegalArgumentException("Valor da transação deve ser maior que zero");
         }
     }
+
+    @Override
+    public String toString() {
+        String numeroCartaoMascarado = numeroCartao.length() > 4
+                ? "*".repeat(numeroCartao.length() - 4) + numeroCartao.substring(numeroCartao.length() - 4)
+                : "*".repeat(numeroCartao.length());
+        return "TransacaoCommand[numeroCartao=" + numeroCartaoMascarado
+                + ", senha=[OCULTADA], valor=" + valor + "]";
+    }
 }

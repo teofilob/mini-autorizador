@@ -1,8 +1,8 @@
 package br.com.teofilob.miniautorizador.infrastructure.adapter.inbound.rest;
 
-import br.com.teofilob.miniautorizador.infrastructure.adapter.outbound.persistence.CartaoEntity;
-import br.com.teofilob.miniautorizador.infrastructure.adapter.outbound.persistence.CartaoJpaRepository;
-import br.com.teofilob.miniautorizador.infrastructure.adapter.outbound.persistence.TransacaoJpaRepository;
+import br.com.teofilob.miniautorizador.infrastructure.adapter.outbound.persistence.cartao.CartaoEntity;
+import br.com.teofilob.miniautorizador.infrastructure.adapter.outbound.persistence.cartao.CartaoJpaRepository;
+import br.com.teofilob.miniautorizador.infrastructure.adapter.outbound.persistence.transacao.TransacaoJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -54,10 +55,12 @@ class TransacaoControllerTest {
 
         mockMvc.perform(post("/transacoes")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Correlation-ID", "teste-transacao-01")
                         .content(payload))
                 .andExpect(status().isCreated())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_PLAIN))
-                .andExpect(content().string("OK"));
+                .andExpect(content().string("OK"))
+                .andExpect(header().string("X-Correlation-ID", "teste-transacao-01"));
 
         assertEquals(new BigDecimal("450.00"), cartaoJpaRepository.findById("1234567890123456")
                 .orElseThrow()

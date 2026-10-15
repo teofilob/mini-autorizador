@@ -1,4 +1,4 @@
-package br.com.teofilob.miniautorizador.infrastructure.adapter.outbound.persistence;
+package br.com.teofilob.miniautorizador.infrastructure.adapter.outbound.persistence.transacao;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

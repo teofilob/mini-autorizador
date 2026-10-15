@@ -1,4 +1,4 @@
-package br.com.teofilob.miniautorizador.infrastructure.adapter.outbound.persistence;
+package br.com.teofilob.miniautorizador.infrastructure.adapter.outbound.persistence.cartao;
 
 import br.com.teofilob.miniautorizador.application.port.outbound.CriarCartaoPort;
 import br.com.teofilob.miniautorizador.domain.model.Cartao;

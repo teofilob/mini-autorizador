@@ -1,4 +1,4 @@
-package br.com.teofilob.miniautorizador.infrastructure.adapter.outbound.persistence;
+package br.com.teofilob.miniautorizador.infrastructure.adapter.outbound.persistence.cartao;
 
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;

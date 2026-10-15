@@ -1,4 +1,4 @@
-package br.com.teofilob.miniautorizador.infrastructure.adapter.outbound.persistence;
+package br.com.teofilob.miniautorizador.infrastructure.adapter.outbound.persistence.transacao;
 
 import br.com.teofilob.miniautorizador.application.port.outbound.TransacaoRepositoryPort;
 import br.com.teofilob.miniautorizador.domain.model.Transacao;

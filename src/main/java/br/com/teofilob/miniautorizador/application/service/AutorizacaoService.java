@@ -11,6 +11,8 @@ import br.com.teofilob.miniautorizador.domain.exception.SaldoInsuficienteExcepti
 import br.com.teofilob.miniautorizador.domain.exception.SenhaInvalidaException;
 import br.com.teofilob.miniautorizador.domain.model.Cartao;
 import br.com.teofilob.miniautorizador.domain.model.Transacao;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +21,8 @@ import java.time.LocalDateTime;
 
 @Service
 public class AutorizacaoService implements AutorizacaoUseCase {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(AutorizacaoService.class);
 
     private final BuscarCartaoPort buscarCartaoPort;
     private final TransacaoRepositoryPort transacaoRepositoryPort;
@@ -51,6 +55,7 @@ public class AutorizacaoService implements AutorizacaoUseCase {
                 comando.valor(),
                 LocalDateTime.now()
         ));
+        LOGGER.info("transaction.authorization.approved comando={}", comando);
 
         return new ResultadoAutorizacao(
                 StatusAutorizacao.APROVADA,

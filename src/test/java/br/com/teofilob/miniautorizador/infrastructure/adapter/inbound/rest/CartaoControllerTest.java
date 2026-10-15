@@ -1,6 +1,6 @@
 package br.com.teofilob.miniautorizador.infrastructure.adapter.inbound.rest;
 
-import br.com.teofilob.miniautorizador.infrastructure.adapter.outbound.persistence.CartaoJpaRepository;
+import br.com.teofilob.miniautorizador.infrastructure.adapter.outbound.persistence.cartao.CartaoJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +19,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+        "app.security.username=username",
+        "app.security.password=password"
+})
 @AutoConfigureMockMvc
 class CartaoControllerTest {
 
@@ -115,5 +118,20 @@ class CartaoControllerTest {
         mockMvc.perform(get("/cartoes/{numeroCartao}", NUMERO_CARTAO)
                         .with(httpBasic("username", "senha-incorreta")))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void deveExporHealthDoActuatorSemAutenticacao() throws Exception {
+        mockMvc.perform(get("/actuator/health"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UP"));
+    }
+
+    @Test
+    void deveExporInformacoesDaAplicacaoNoActuator() throws Exception {
+        mockMvc.perform(get("/actuator/info"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.app.name").value("mini-autorizador"))
+                .andExpect(jsonPath("$.app.description").exists());
     }
 }

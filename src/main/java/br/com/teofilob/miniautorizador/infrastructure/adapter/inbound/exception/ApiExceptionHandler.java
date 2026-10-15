@@ -7,6 +7,8 @@ import br.com.teofilob.miniautorizador.domain.exception.SaldoInsuficienteExcepti
 import br.com.teofilob.miniautorizador.domain.exception.SenhaInvalidaException;
 import br.com.teofilob.miniautorizador.infrastructure.adapter.inbound.dto.CartaoResponse;
 import br.com.teofilob.miniautorizador.infrastructure.adapter.inbound.dto.ErrorResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -19,8 +21,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(ApiExceptionHandler.class);
+
     @ExceptionHandler(CartaoDuplicadoException.class)
     public ResponseEntity<CartaoResponse> handleCartaoDuplicado(CartaoDuplicadoException ex) {
+        LOGGER.warn("card.creation.rejected reason=duplicate");
         return ResponseEntity.unprocessableEntity()
                 .body(new CartaoResponse(ex.getSenha(), ex.getNumeroCartao()));
     }
@@ -41,6 +46,7 @@ public class ApiExceptionHandler {
     }
 
     private ResponseEntity<String> unprocessableEntity(String message) {
+        LOGGER.warn("transaction.authorization.rejected reason={}", message);
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                 .contentType(MediaType.TEXT_PLAIN)
                 .body(message);

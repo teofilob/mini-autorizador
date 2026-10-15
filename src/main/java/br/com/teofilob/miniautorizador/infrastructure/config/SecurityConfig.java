@@ -30,7 +30,7 @@ public class SecurityConfig {
     @Bean
     public UserDetailsService userDetailsService(
             @Value("${app.security.username:username}") String username,
-            @Value("${app.security.password:password}") String password,
+            @Value("${app.security.password:passwordpassword}") String password,
             PasswordEncoder passwordEncoder) {
         return new InMemoryUserDetailsManager(
                 User.withUsername(username)

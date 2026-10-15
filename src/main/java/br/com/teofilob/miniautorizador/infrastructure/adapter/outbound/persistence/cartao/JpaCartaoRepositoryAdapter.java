@@ -1,4 +1,4 @@
-package br.com.teofilob.miniautorizador.infrastructure.adapter.outbound.persistence;
+package br.com.teofilob.miniautorizador.infrastructure.adapter.outbound.persistence.cartao;
 
 import br.com.teofilob.miniautorizador.application.port.outbound.BuscarCartaoPort;
 import br.com.teofilob.miniautorizador.domain.model.Cartao;
@@ -40,8 +40,6 @@ public class JpaCartaoRepositoryAdapter implements BuscarCartaoPort {
                     cartaoJpaRepository.save(cartao);
                 });
     }
-
-
 
     private Cartao toDomain(CartaoEntity entity) {
         return new Cartao(entity.getNumeroCartao(), entity.getSenha(), entity.getSaldo());
