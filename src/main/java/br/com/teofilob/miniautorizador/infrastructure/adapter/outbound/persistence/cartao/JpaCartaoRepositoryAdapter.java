@@ -3,6 +3,7 @@ package br.com.teofilob.miniautorizador.infrastructure.adapter.outbound.persiste
 import br.com.teofilob.miniautorizador.application.port.outbound.BuscarCartaoPort;
 import br.com.teofilob.miniautorizador.domain.model.Cartao;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -25,7 +26,7 @@ public class JpaCartaoRepositoryAdapter implements BuscarCartaoPort {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.MANDATORY)
     public Optional<Cartao> buscarPorNumeroComLock(String numeroCartao) {
         return cartaoJpaRepository.findByNumeroCartaoComLock(numeroCartao)
                 .map(this::toDomain);

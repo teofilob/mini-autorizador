@@ -5,14 +5,21 @@ import br.com.teofilob.miniautorizador.application.port.inbound.AutorizacaoUseCa
 import br.com.teofilob.miniautorizador.application.port.outbound.TransacaoRepositoryPort;
 import br.com.teofilob.miniautorizador.infrastructure.adapter.outbound.persistence.cartao.CartaoEntity;
 import br.com.teofilob.miniautorizador.infrastructure.adapter.outbound.persistence.cartao.CartaoJpaRepository;
+import br.com.teofilob.miniautorizador.infrastructure.adapter.outbound.persistence.cartao.JpaCartaoRepositoryAdapter;
 import br.com.teofilob.miniautorizador.infrastructure.adapter.outbound.persistence.transacao.TransacaoJpaRepository;
+import br.com.teofilob.miniautorizador.domain.exception.SaldoInsuficienteException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.IllegalTransactionStateException;
 
 import java.math.BigDecimal;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -32,6 +39,9 @@ class AutorizacaoServiceTransactionTest {
 
     @Autowired
     private TransacaoJpaRepository transacaoJpaRepository;
+
+    @Autowired
+    private JpaCartaoRepositoryAdapter cartaoRepositoryAdapter;
 
     @MockitoBean
     private TransacaoRepositoryPort transacaoRepositoryPort;
@@ -66,8 +76,46 @@ class AutorizacaoServiceTransactionTest {
                 "1234567890123456", "1234", new BigDecimal("50.00")).toString();
 
         assertTrue(representacao.contains("************3456"));
-        assertTrue(representacao.contains("senha=[REDACTED]"));
+        assertTrue(representacao.contains("senha=[OCULTADA]"));
         assertFalse(representacao.contains("1234567890123456"));
         assertFalse(representacao.contains("1234"));
+    }
+
+    @Test
+    void deveExigirTransacaoAtivaParaBuscarCartaoComLock() {
+        assertThrows(IllegalTransactionStateException.class,
+                () -> cartaoRepositoryAdapter.buscarPorNumeroComLock("1234567890123456"));
+    }
+
+    @Test
+    void deveSerializarAutorizacoesConcorrentesParaEvitarDoubleSpending() throws Exception {
+        var executor = Executors.newFixedThreadPool(2);
+        var inicioSimultaneo = new CyclicBarrier(3);
+        Callable<Boolean> autorizar = () -> {
+            inicioSimultaneo.await();
+            try {
+                autorizacaoUseCase.autorizar(new TransacaoCommand(
+                        "1234567890123456", "1234", new BigDecimal("300.00")));
+                return true;
+            } catch (SaldoInsuficienteException ex) {
+                return false;
+            }
+        };
+
+        try {
+            var primeiraAutorizacao = executor.submit(autorizar);
+            var segundaAutorizacao = executor.submit(autorizar);
+            inicioSimultaneo.await(5, TimeUnit.SECONDS);
+
+            int autorizacoesAprovadas = (primeiraAutorizacao.get(10, TimeUnit.SECONDS) ? 1 : 0)
+                    + (segundaAutorizacao.get(10, TimeUnit.SECONDS) ? 1 : 0);
+
+            assertEquals(1, autorizacoesAprovadas);
+            assertEquals(new BigDecimal("200.00"), cartaoJpaRepository.findById("1234567890123456")
+                    .orElseThrow()
+                    .getSaldo());
+        } finally {
+            executor.shutdownNow();
+        }
     }
 }

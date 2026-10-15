@@ -9,6 +9,7 @@ import br.com.teofilob.miniautorizador.infrastructure.adapter.inbound.dto.Cartao
 import br.com.teofilob.miniautorizador.infrastructure.adapter.inbound.dto.ErrorResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -50,6 +51,14 @@ public class ApiExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                 .contentType(MediaType.TEXT_PLAIN)
                 .body(message);
+    }
+
+    @ExceptionHandler(PessimisticLockingFailureException.class)
+    public ResponseEntity<String> handlePessimisticLockingFailure(PessimisticLockingFailureException ex) {
+        LOGGER.warn("transaction.authorization.lock_unavailable", ex);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .contentType(MediaType.TEXT_PLAIN)
+                .body("TRANSACAO_TEMPORARIAMENTE_INDISPONIVEL");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
