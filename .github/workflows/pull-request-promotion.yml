@@ -8,21 +8,16 @@ on:
       - Homol
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
-
-concurrency:
-  group: promotion-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   open-promotion-pr:
-    name: Open promotion PR
     runs-on: ubuntu-latest
     steps:
-      - name: Create pull request for the next environment
+      - name: Create pull request
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
           GH_REPO: ${{ github.repository }}
           SOURCE_BRANCH: ${{ github.ref_name }}
         shell: bash
@@ -44,7 +39,7 @@ jobs:
           esac
 
           if ! gh api "repos/$GH_REPO/branches/$TARGET_BRANCH" --silent; then
-            echo "Target branch '$TARGET_BRANCH' does not exist. Create it before promoting changes." >&2
+            echo "Target branch '$TARGET_BRANCH' does not exist." >&2
             exit 1
           fi
 
@@ -57,16 +52,13 @@ jobs:
             --jq "length")
 
           if [ "$OPEN_PR_COUNT" -gt 0 ]; then
-            echo "An open pull request already exists from $SOURCE_BRANCH to $TARGET_BRANCH."
+            echo "Pull request already exists."
             exit 0
           fi
-
-          PR_BODY=$(printf "Automated promotion PR: %s -> %s.\n\nMerge this PR after the required reviews and CI checks pass." \
-            "$SOURCE_BRANCH" "$TARGET_BRANCH")
 
           gh pr create \
             --repo "$GH_REPO" \
             --base "$TARGET_BRANCH" \
             --head "$SOURCE_BRANCH" \
             --title "Promote $SOURCE_BRANCH to $TARGET_BRANCH" \
-            --body "$PR_BODY"
+            --body "Automated promotion PR"
