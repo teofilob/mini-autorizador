@@ -1,0 +1,72 @@
+name: Open promotion pull requests
+
+on:
+  push:
+    branches:
+      - "feature-*"
+      - develop
+      - Homol
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: promotion-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  open-promotion-pr:
+    name: Open promotion PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create pull request for the next environment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SOURCE_BRANCH: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          case "$SOURCE_BRANCH" in
+            feature-*)
+              TARGET_BRANCH="develop"
+              ;;
+            develop)
+              TARGET_BRANCH="Homol"
+              ;;
+            Homol)
+              TARGET_BRANCH="main"
+              ;;
+            *)
+              echo "Unsupported source branch: $SOURCE_BRANCH" >&2
+              exit 1
+              ;;
+          esac
+
+          if ! gh api "repos/$GH_REPO/branches/$TARGET_BRANCH" --silent; then
+            echo "Target branch '$TARGET_BRANCH' does not exist. Create it before promoting changes." >&2
+            exit 1
+          fi
+
+          OPEN_PR_COUNT=$(gh pr list \
+            --repo "$GH_REPO" \
+            --head "$SOURCE_BRANCH" \
+            --base "$TARGET_BRANCH" \
+            --state open \
+            --json number \
+            --jq 'length')
+
+          if [ "$OPEN_PR_COUNT" -gt 0 ]; then
+            echo "An open pull request already exists from $SOURCE_BRANCH to $TARGET_BRANCH."
+            exit 0
+          fi
+
+          PR_BODY=$(printf 'Automated promotion PR: `%s` → `%s`.\n\nMerge this PR after the required reviews and CI checks pass.' \
+            "$SOURCE_BRANCH" "$TARGET_BRANCH")
+
+          gh pr create \
+            --repo "$GH_REPO" \
+            --base "$TARGET_BRANCH" \
+            --head "$SOURCE_BRANCH" \
+            --title "Promote $SOURCE_BRANCH to $TARGET_BRANCH" \
+            --body "$PR_BODY"
