@@ -54,14 +54,14 @@ jobs:
             --base "$TARGET_BRANCH" \
             --state open \
             --json number \
-            --jq 'length')
+            --jq "length")
 
           if [ "$OPEN_PR_COUNT" -gt 0 ]; then
             echo "An open pull request already exists from $SOURCE_BRANCH to $TARGET_BRANCH."
             exit 0
           fi
 
-          PR_BODY=$(printf 'Automated promotion PR: `%s` → `%s`.\n\nMerge this PR after the required reviews and CI checks pass.' \
+          PR_BODY=$(printf "Automated promotion PR: %s -> %s.\n\nMerge this PR after the required reviews and CI checks pass." \
             "$SOURCE_BRANCH" "$TARGET_BRANCH")
 
           gh pr create \
