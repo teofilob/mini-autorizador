@@ -40,13 +40,11 @@ public class AutorizacaoService implements AutorizacaoUseCase {
         Cartao cartao = buscarCartaoPort.buscarPorNumeroComLock(comando.numeroCartao())
                 .orElseThrow(() -> new CartaoInexistenteException("Cartão inexistente."));
 
-        if (!cartao.senhaValida(comando.senha())) {
-            throw new SenhaInvalidaException("Senha inválida.");
-        }
+        // Valida a senha (lança SenhaInvalidaException se falhar)
+        cartao.validarSenha(comando.senha());
 
-        if (!cartao.possuiSaldoPara(comando.valor())) {
-            throw new SaldoInsuficienteException("Saldo insuficiente.");
-        }
+        // Debita o saldo (lança SaldoInsuficienteException se falhar) e retorna a nova instância de Cartao'
+        cartao.debitar(comando.valor());
 
         BigDecimal novoSaldo = cartao.saldo().subtract(comando.valor());
         buscarCartaoPort.atualizarSaldo(cartao.numeroCartao(), novoSaldo);
@@ -64,4 +62,7 @@ public class AutorizacaoService implements AutorizacaoUseCase {
                 novoSaldo
         );
     }
+
+
+
 }

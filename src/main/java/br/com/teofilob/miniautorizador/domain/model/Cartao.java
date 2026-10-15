@@ -1,7 +1,11 @@
 package br.com.teofilob.miniautorizador.domain.model;
 
+import br.com.teofilob.miniautorizador.domain.exception.SaldoInsuficienteException;
+import br.com.teofilob.miniautorizador.domain.exception.SenhaInvalidaException;
+
 import java.math.BigDecimal;
 import java.util.Objects;
+import java.util.Optional;
 
 public record Cartao(String numeroCartao, String senha, BigDecimal saldo) {
 
@@ -29,5 +33,18 @@ public record Cartao(String numeroCartao, String senha, BigDecimal saldo) {
 
     public boolean possuiSaldoPara(BigDecimal valor) {
         return saldo.compareTo(valor) >= 0;
+    }
+
+    public void validarSenha(String senhaInformada) {
+        Optional.ofNullable(senhaInformada)
+                .filter(this::senhaValida)
+                .orElseThrow(() -> new SenhaInvalidaException("Senha inválida."));
+    }
+
+    public Cartao debitar(BigDecimal valor) {
+        return Optional.ofNullable(valor)
+                .filter(this::possuiSaldoPara)
+                .map(v -> new Cartao(this.numeroCartao, this.senha, this.saldo.subtract(v)))
+                .orElseThrow(() -> new SaldoInsuficienteException("Saldo insuficiente."));
     }
 }
