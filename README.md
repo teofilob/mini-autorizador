@@ -1,6 +1,25 @@
-# Mini Autorizador
+# 📝 Mini Autorizador
 
 API REST para cadastro de cartões, consulta de saldo e autorização de transações. O projeto usa Spring Boot, Java 25, Spring Data JPA e MySQL, organizado em camadas inspiradas em arquitetura hexagonal.
+
+## 🏛 Decisões de Arquitetura & Escolha do Banco de Dados
+
+Para este projeto, optou-se pela utilização do **MySQL** (banco de dados relacional) em detrimento de uma solução NoSQL como o MongoDB. As razões técnicas que motivaram essa escolha incluem:
+
+### 1. Garantia Estrita de Propriedades ACID e Consistência Imediata (*Immediate Consistency*)
+Em sistemas financeiros e autorizadores de pagamento, a consistência de dados precisa ser estrita e imediata. Soluções NoSQL frequentemente operam sob o modelo de consistência eventual (*eventual consistency*), o que pode gerar inconsistências em requisições de leitura e débito de saldo em curto intervalo de tempo. O MySQL garante atomicidade e consistência imediata a cada transação.
+
+### 2. Prevenção de *Double Spending* via Pessimistic Locking (`FOR UPDATE`)
+O principal desafio do mini-autorizador é garantir que requisições concorrentes disparadas simultaneamente para o mesmo cartão (em instâncias distintas da aplicação) não causem *double spending* (débito duplo indevido).
+
+A escolha do motor **InnoDB do MySQL** permite a aplicação de **Pessimistic Write Locking** (`SELECT ... FOR UPDATE`) nativo no nível de linha (*Row-Level Locking*):
+- No início do fluxo de autorização (`@Transactional`), a consulta obtém o bloqueio exclusivo da linha do cartão.
+- Quaisquer requisições concorrentes paralelas para o mesmo cartão são forçadas pelo banco de dados a aguardar até a consolidação (`COMMIT`) ou reversão (`ROLLBACK`) da primeira transação.
+- Isso garante que a segunda transação leia o saldo já atualizado e falhe na regra de negócio (`SALDO_INSUFICIENTE`), sem gerar a necessidade de mecanismos complexos de travas distribuídas.
+
+### 3. Integridade de Dados no Nível da Base
+Utilização de restrições de unicidade (`UNIQUE constraint`) no campo `numero_cartao`, prevenindo a criação duplicada de cartões em cenários de concorrência.
+
 
 ## Tecnologias
 
@@ -15,6 +34,9 @@ API REST para cadastro de cartões, consulta de saldo e autorização de transa�
 - JDK 25
 - Maven 3.9 ou superior
 - Docker e Docker Compose, ou uma instância MySQL compatível
+
+
+
 
 ## Executar localmente
 
