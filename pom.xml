@@ -110,6 +110,13 @@
                         <goals>
                             <goal>report</goal>
                         </goals>
+                        <configuration>
+                            <excludes>
+                                <exclude>br/com/teofilob/miniautorizador/application/dto/**</exclude>
+                                <exclude>br/com/teofilob/miniautorizador/domain/model/**</exclude>
+                                <exclude>br/com/teofilob/miniautorizador/infrastructure/adapter/inbound/dto/**</exclude>
+                            </excludes>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
